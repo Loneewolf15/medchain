@@ -6,8 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import access, auth, clinical, diagnostic, iot, ledger, patients
-
+from app.routers import access, appointments, auth, clinical, diagnostic, iot, ledger, patients
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
 
@@ -32,7 +31,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # tighten before any real deployment
+    allow_origins=settings.CORS_ORIGINS,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -40,6 +39,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(patients.router)
+app.include_router(appointments.router)
 app.include_router(clinical.router)
 app.include_router(diagnostic.router)
 app.include_router(access.router)

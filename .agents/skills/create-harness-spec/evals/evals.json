@@ -1,0 +1,131 @@
+{
+  "skill_name": "create-harness-spec",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I have a hedera-harness clone open. Help me create a Tier 0-1 harness spec for an HCS proof-wall demo called proof-wall: users browse a public message wall without a wallet, and posting requires connecting a wallet. No Solidity. Default seed.",
+      "expected_output": "A grilling session that asks one question at a time with a recommended answer, looks up harness facts, waits for shared understanding before writing files, then emits a coherent gate 0-1 spec under docs/prds/proof-wall.md, specs/proof-wall.yaml, validators/proof-wall-static.json, validators/proof-wall-yarn.json.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "one-question-at-a-time",
+          "type": "regex",
+          "value": "(one question|one at a time|Ask.*one|waiting for|recommended answer)",
+          "description": "Follows grilling protocol: one question at a time / recommended answer"
+        },
+        {
+          "name": "waits-for-shared-understanding",
+          "type": "regex",
+          "value": "(shared understanding|confirm|go-ahead|before (writing|emitting|creating))",
+          "description": "Does not write files until shared understanding is confirmed"
+        },
+        {
+          "name": "writes-spec-file",
+          "type": "contains",
+          "value": "validators.static",
+          "description": "Spec file includes validators.static (harness loader field)"
+        },
+        {
+          "name": "includes-template-metadata",
+          "type": "contains",
+          "value": "templateMetadata",
+          "description": "Spec file includes templateMetadata (harness loader field)"
+        },
+        {
+          "name": "names-install-command",
+          "type": "regex",
+          "value": "\"name\"\\s*:\\s*\"install\"",
+          "description": "Command validator has a command literally named install"
+        },
+        {
+          "name": "recommends-hcs-skill",
+          "type": "contains",
+          "value": "hedera-consensus-service",
+          "description": "Recommends generator skill hedera-consensus-service for HCS"
+        },
+        {
+          "name": "keeps-run-blind",
+          "type": "regex",
+          "value": "(blind|oracle|PRD.*(journey|product)|journeys and outcomes)",
+          "description": "Keeps the run blind / separates PRD from oracle"
+        },
+        {
+          "name": "separates-authoring-from-generator",
+          "type": "regex",
+          "value": "(generator|skills:|authoring)",
+          "description": "States that authoring skills stay out of the generator skills list"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Deepen my existing proof-wall harness spec to gate 3. Derive acceptance contract assertions from the PRD journeys (browse without wallet; wallet-gated post). Keep the run blind.",
+      "expected_output": "An oracle with C1/C2/... assertions, evaluationRules fail-closed posture, and instructions to uncomment contract + validator in the spec file — without mirroring assertion text into the PRD.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "uses-assertion-ids",
+          "type": "contains",
+          "value": "\"id\": \"C1\"",
+          "description": "Oracle uses numbered assertion ids starting at C1"
+        },
+        {
+          "name": "includes-howto-verify",
+          "type": "contains",
+          "value": "howToVerify",
+          "description": "Assertions include howToVerify"
+        },
+        {
+          "name": "includes-executable-flag-field-awareness",
+          "type": "contains",
+          "value": "executableWithTestSigner",
+          "description": "Mentions or uses executableWithTestSigner (loader/grader field)"
+        },
+        {
+          "name": "fail-closed-rules",
+          "type": "contains",
+          "value": "failOnUncertainty",
+          "description": "evaluationRules include failOnUncertainty"
+        },
+        {
+          "name": "blind-integrity-reminder",
+          "type": "regex",
+          "value": "(blind|oracle|not.*PRD|PRD.*product-facing|journeys and outcomes)",
+          "description": "Reminds that oracle text must not go into the PRD"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "When should I enable chainValidation for my harness spec, and what YAML fields do I need?",
+      "expected_output": "Guidance that gate 3.5 is opt-in, requires gate 3, network testnet, operator env vars, and executableWithTestSigner assertions.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "mentions-chain-validation",
+          "type": "contains",
+          "value": "chainValidation",
+          "description": "References chainValidation block"
+        },
+        {
+          "name": "requires-testnet",
+          "type": "contains",
+          "value": "network: testnet",
+          "description": "Specifies chainValidation.network testnet"
+        },
+        {
+          "name": "mentions-operator-env",
+          "type": "regex",
+          "value": "HEDERA_OPERATOR_(ID|KEY)",
+          "description": "Mentions operator env var names"
+        },
+        {
+          "name": "ties-to-executable-flag",
+          "type": "contains",
+          "value": "executableWithTestSigner",
+          "description": "Ties on-chain grading to executableWithTestSigner"
+        }
+      ]
+    }
+  ]
+}

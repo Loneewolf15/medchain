@@ -2,8 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
-from app.models import AccessScope, ClinicalRecordType, DiagnosticKind, Role
-
+from app.models import AccessScope, AppointmentStatus, ClinicalRecordType, DiagnosticKind, Role
 # --- Auth ---------------------------------------------------------------
 class UserCreate(BaseModel):
     email: EmailStr
@@ -148,3 +147,25 @@ class LedgerStatusOut(BaseModel):
     ledger_mode: str
     simulated: bool
     enforces_access_onchain: bool
+
+
+# --- Appointments -------------------------------------------------------------
+class AppointmentCreate(BaseModel):
+    doctor_id: str
+    scheduled_at: datetime
+    reason: str | None = None
+
+
+class AppointmentUpdate(BaseModel):
+    status: AppointmentStatus
+
+
+class AppointmentOut(BaseModel):
+    id: str
+    patient_id: str
+    doctor_id: str
+    scheduled_at: datetime
+    reason: str | None
+    status: AppointmentStatus
+
+    model_config = ConfigDict(from_attributes=True)

@@ -205,3 +205,35 @@ def test_clinical_only_nurse_can_view_own_access_grant(hcs_client):
     client.post(f"/patients/{patient_id}/access", json={"grantee_user_id": nurse_id, "scope": "clinical"}, headers=doctor_headers)
     resp = client.get(f"/patients/{patient_id}/access", headers=nurse_headers)
     assert resp.status_code == 200
+
+
+def test_appointment_crud(hcs_client):
+    client, _ = hcs_client
+    doctor_headers = register_and_login(client, "dr.appt@medchain.example.com", "doctor")
+    doctor_id = client.get("/auth/me", headers=doctor_headers).json()["id"]
+    patient_id = client.post("/patients", json={"full_name": "Appt Pt", "date_of_birth": "1990-01-01", "gender": "male"}, headers=doctor_headers).json()["id"]
+    
+    # Create
+    resp = client.post(f"/patients/{patient_id}/appointments", json={"doctor_id": doctor_id, "scheduled_at": "2026-10-10T10:00:00Z", "reason": "Checkup"}, headers=doctor_headers)
+    assert resp.status_code == 201
+    appt_id = resp.json()["id"]
+
+    # Read
+    resp = client.get(f"/patients/{patient_id}/appointments", headers=doctor_headers)
+    assert resp.status_code == 200
+    assert len(resp.json()) == 1
+
+    # Update
+    resp = client.patch(f"/patients/{patient_id}/appointments/{appt_id}", json={"status": "completed"}, headers=doctor_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "completed"
+
+
+def test_appointment_requires_access(hcs_client):
+    client, _ = hcs_client
+    doctor_headers = register_and_login(client, "dr.appt2@medchain.example.com", "doctor")
+    nurse_headers = register_and_login(client, "nurse.appt2@medchain.example.com", "nurse")
+    patient_id = client.post("/patients", json={"full_name": "Appt Pt 2", "date_of_birth": "1990-01-01", "gender": "male"}, headers=doctor_headers).json()["id"]
+    
+    resp = client.get(f"/patients/{patient_id}/appointments", headers=nurse_headers)
+    assert resp.status_code == 403

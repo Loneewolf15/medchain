@@ -1,0 +1,119 @@
+{
+  "skill_name": "review-harness-spec",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Review this harness spec. specs/demo.yaml has name: demo and templateMetadata.name: demo, but validators/demo-static.json asserts template.json name equals my-template. The yarn validator's first command is named yarn-install instead of install. Contract is uncommented but validator.enabled is missing. PRD contains 'C1' and a howToVerify paragraph copied from the contract. Produce a two-axis review.",
+      "expected_output": "A review report with ## Wiring and ## Oracle sections. Wiring flags name mismatch, missing install command name, gate 3 misconfiguration, and blind failure. Oracle may note journey/assertion issues.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "has-wiring-axis",
+          "type": "regex",
+          "value": "##[[:space:]]*Wiring",
+          "description": "Reports a Wiring axis section"
+        },
+        {
+          "name": "has-oracle-axis",
+          "type": "regex",
+          "value": "##[[:space:]]*Oracle",
+          "description": "Reports an Oracle axis section"
+        },
+        {
+          "name": "flags-name-mismatch",
+          "type": "regex",
+          "value": "(name|templateMetadata|template\\.json|slug).{0,80}(mismatch|disagree|inconsist|does not match|≠|!=|FAIL)",
+          "description": "Flags cross-file name / slug inconsistency"
+        },
+        {
+          "name": "flags-install-name",
+          "type": "regex",
+          "value": "(\"name\"\\s*:\\s*\"install\"|named install|command.*install)",
+          "description": "Flags missing literal install command name"
+        },
+        {
+          "name": "flags-gate3-incomplete",
+          "type": "regex",
+          "value": "(validator\\.enabled|contract.*validator|gate 3|Tier 3)",
+          "description": "Flags gate 3 needing both contract and validator.enabled"
+        },
+        {
+          "name": "flags-blind-leak",
+          "type": "regex",
+          "value": "(blind|howToVerify|PRD.*(C1|assertion)|oracle.*PRD)",
+          "description": "Flags oracle assertion text leaking into the PRD"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Audit whether this harness spec is safe to enable chainValidation. Spec file has contract + validator.enabled, chainValidation.enabled true, network: mainnet, and one assertion with executableWithTestSigner true. Playwright smoke lists deep UX steps that belong in the oracle. Report findings on both axes.",
+      "expected_output": "Wiring blocker for network mainnet; Oracle warning that Playwright is too thick; confirmation that executableWithTestSigner requires chainValidation (present) but network must be testnet.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "has-both-axes",
+          "type": "regex",
+          "value": "(##[[:space:]]*Wiring[\\s\\S]*##[[:space:]]*Oracle|##[[:space:]]*Oracle[\\s\\S]*##[[:space:]]*Wiring)",
+          "description": "Includes both Wiring and Oracle sections"
+        },
+        {
+          "name": "flags-mainnet",
+          "type": "regex",
+          "value": "(mainnet|network:\\s*testnet|testnet)",
+          "description": "Flags non-testnet chainValidation.network"
+        },
+        {
+          "name": "mentions-chain-validation-field",
+          "type": "contains",
+          "value": "chainValidation",
+          "description": "References chainValidation"
+        },
+        {
+          "name": "mentions-executable-field",
+          "type": "contains",
+          "value": "executableWithTestSigner",
+          "description": "References executableWithTestSigner"
+        },
+        {
+          "name": "flags-thick-playwright",
+          "type": "regex",
+          "value": "(Playwright|gate 2|Tier 2).{0,60}(thin|thick|deep|oracle|gate 3|Tier 3)",
+          "description": "Warns that deep UX belongs in the oracle not Playwright"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Check skills: list on specs/demo.yaml which includes hedera-consensus-service and create-harness-spec. Is that correct? Also the PRD has two journeys but the oracle only has C1 for home load — review that.",
+      "expected_output": "Oracle axis warns that create-harness-spec must not be vendored into generator runs and that a PRD journey lacks an assertion; hedera-consensus-service is fine.",
+      "files": [],
+      "assertions": [
+        {
+          "name": "rejects-author-in-skills",
+          "type": "regex",
+          "value": "create-harness-spec",
+          "description": "Calls out create-harness-spec in skills list"
+        },
+        {
+          "name": "allows-generator-skill",
+          "type": "contains",
+          "value": "hedera-consensus-service",
+          "description": "Acknowledges generator-facing skill as appropriate"
+        },
+        {
+          "name": "journey-traceability",
+          "type": "regex",
+          "value": "(journey|trace|map|orphan|missing assertion)",
+          "description": "Checks journey ↔ assertion traceability"
+        },
+        {
+          "name": "explains-audience",
+          "type": "regex",
+          "value": "(generator|vendor|authoring)",
+          "description": "Explains authoring vs generator audience split"
+        }
+      ]
+    }
+  ]
+}

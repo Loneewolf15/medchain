@@ -6,3 +6,5 @@ __pycache__/
 medchain.db
 .env
 .pytest_cache/
+brute_force.py
+skills-lock.json

@@ -43,7 +43,7 @@ class Settings(BaseSettings):
     # --- App ---
     APP_NAME: str = "MedChain"
     ENV: str = "development"
-
+    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     # --- Database (off-chain store for all PHI) ---
     DATABASE_URL: str = "sqlite:///./medchain.db"
 

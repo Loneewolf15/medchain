@@ -48,7 +48,7 @@ Run the tests:
 pytest -q
 ```
 
-## Trying it out via /docs
+## Trying it out via /docs (Backend Only)
 
 1. `POST /auth/register` — create a doctor, nurse, lab_scientist, or patient user.
 2. `POST /auth/login` (OAuth2 password form, not JSON) — get a bearer token,
@@ -63,6 +63,19 @@ pytest -q
    `POST /patients/{id}/iot/start` to get a reading every
    `IOT_SIMULATION_INTERVAL_SECONDS` in the background.
 6. `GET /ledger/status` — see which mode is active and whether it's simulated.
+
+## Trying it out via the Next.js Frontend
+
+The frontend is a Next.js application that provides a UI for the backend.
+
+1. Start the backend as described in "Quick start".
+2. Open a new terminal and start the frontend:
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+3. Open `http://localhost:3000` in your browser.
+4. Sign in with a registered user (register via `/docs` first) to view the dashboard and interact with patients and the Hedera ledger.
 
 ## Switching to real Hedera testnet
 
