@@ -186,3 +186,22 @@ def test_prescription_listing_logs_view_event(hcs_client):
     assert ledger.log[-1]["resource_type"] == "prescription"
 
 
+
+def test_cannot_self_register_as_admin(hcs_client):
+    client, ledger = hcs_client
+    resp = client.post(
+        "/auth/register",
+        json={"email": "hacker@x.com", "password": "pw1234", "full_name": "Hacker", "role": "admin"},
+    )
+    assert resp.status_code == 422
+
+
+def test_clinical_only_nurse_can_view_own_access_grant(hcs_client):
+    client, _ = hcs_client
+    doctor_headers = register_and_login(client, "dr.grant@medchain.example.com", "doctor")
+    nurse_headers = register_and_login(client, "nurse.grant@medchain.example.com", "nurse")
+    nurse_id = client.get("/auth/me", headers=nurse_headers).json()["id"]
+    patient_id = client.post("/patients", json={"full_name": "A", "date_of_birth": "1990-01-01", "gender": "male"}, headers=doctor_headers).json()["id"]
+    client.post(f"/patients/{patient_id}/access", json={"grantee_user_id": nurse_id, "scope": "clinical"}, headers=doctor_headers)
+    resp = client.get(f"/patients/{patient_id}/access", headers=nurse_headers)
+    assert resp.status_code == 200

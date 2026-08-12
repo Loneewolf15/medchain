@@ -69,10 +69,7 @@ def list_access(
         if not patient:
             raise HTTPException(status_code=404, detail="Patient not found")
         is_owner = patient.user_id == current_user.id
-        has_any_grant = access.is_authorized(
-            patient_id=patient_id, user=current_user, scope=AccessScope.ALL
-        )
-        if not is_owner and not has_any_grant:
+        if not is_owner and not access.has_any_grant(patient_id=patient_id, user=current_user):
             raise HTTPException(status_code=403, detail="Not authorised to view access grants for this patient")
 
     return db.query(AccessGrant).filter(AccessGrant.patient_id == patient_id).all()

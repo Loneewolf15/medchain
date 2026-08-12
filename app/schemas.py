@@ -11,6 +11,13 @@ class UserCreate(BaseModel):
     full_name: str
     role: Role
 
+    @field_validator("role")
+    @classmethod
+    def disallow_self_admin(cls, v: Role) -> Role:
+        if v == Role.ADMIN:
+            raise ValueError("Cannot self-register as ADMIN")
+        return v
+
 
 class UserOut(BaseModel):
     id: str
