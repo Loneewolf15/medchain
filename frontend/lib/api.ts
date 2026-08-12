@@ -8,6 +8,16 @@ function getHeaders() {
   };
 }
 
+export async function register(data: any) {
+  const res = await fetch(`${API_URL}/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Registration failed");
+  return res.json();
+}
+
 export async function login(email: string, password: string) {
   const formData = new URLSearchParams();
   formData.append("username", email);

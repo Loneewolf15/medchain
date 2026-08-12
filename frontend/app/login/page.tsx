@@ -62,6 +62,11 @@ export default function LoginPage() {
               Sign in
             </button>
           </div>
+          <div className="text-center">
+            <a href="/register" className="text-sm text-indigo-600 hover:text-indigo-500">
+              Need an account? Register
+            </a>
+          </div>
         </form>
       </div>
     </div>
