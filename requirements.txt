@@ -1,0 +1,21 @@
+fastapi==0.141.1
+uvicorn[standard]==0.52.1
+sqlalchemy==2.0.52
+pydantic==2.13.4
+pydantic-settings==2.15.0
+email-validator==2.3.0
+python-multipart==0.0.20
+hiero-sdk-python==0.2.10
+python-dotenv==1.2.2
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-jose[cryptography]==3.5.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+httpx==0.28.1
+
+# Optional: only needed if you run scripts/bootstrap_hedera.py --contract
+# to compile+deploy AccessControl.sol for LEDGER_MODE=smart_contract
+py-solc-x==2.0.3
+requests==2.32.3
+
