@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_access_service
-from app.models import AccessGrant, Patient, Role, User
+from app.models import AccessGrant, AccessScope, Patient, Role, User
 from app.schemas import AccessGrantCreate, AccessGrantOut
 from app.security import get_current_user
 from app.services.access_service import AccessService
@@ -59,6 +59,20 @@ def revoke_access(
 
 @router.get("", response_model=list[AccessGrantOut])
 def list_access(
-    patient_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
+    patient_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    access: AccessService = Depends(get_access_service),
 ):
+    if current_user.role != Role.ADMIN:
+        patient = db.get(Patient, patient_id)
+        if not patient:
+            raise HTTPException(status_code=404, detail="Patient not found")
+        is_owner = patient.user_id == current_user.id
+        has_any_grant = access.is_authorized(
+            patient_id=patient_id, user=current_user, scope=AccessScope.ALL
+        )
+        if not is_owner and not has_any_grant:
+            raise HTTPException(status_code=403, detail="Not authorised to view access grants for this patient")
+
     return db.query(AccessGrant).filter(AccessGrant.patient_id == patient_id).all()

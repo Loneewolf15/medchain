@@ -109,3 +109,23 @@ def test_view_actions_are_logged_to_the_ledger(hcs_client):
     after = len(ledger.log)
     assert after == before + 1
     assert ledger.log[-1]["action"] == "VIEW"
+
+
+def test_unauthorized_user_cannot_list_access_grants(hcs_client):
+    client, ledger = hcs_client
+    doctor_headers = register_and_login(client, "dr.zainab@medchain.example.com", "doctor")
+    unrelated_headers = register_and_login(client, "patient.snooper@medchain.example.com", "patient")
+
+    patient_id = client.post(
+        "/patients",
+        json={"full_name": "Tolu James", "date_of_birth": "1995-10-10", "gender": "male"},
+        headers=doctor_headers,
+    ).json()["id"]
+
+    # Unauthorized user tries to list grants
+    resp = client.get(f"/patients/{patient_id}/access", headers=unrelated_headers)
+    assert resp.status_code == 403
+
+    # Attending doctor lists grants
+    doc_resp = client.get(f"/patients/{patient_id}/access", headers=doctor_headers)
+    assert doc_resp.status_code == 200
