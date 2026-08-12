@@ -1,13 +1,8 @@
-from __future__ import annotations
-
-from functools import lru_cache
-
 from app.config import LedgerMode, Settings, get_settings
 from app.ledger.base import LedgerService
 from app.ledger.simulated import SimulatedHcsLedgerService, SimulatedSmartContractLedgerService
 
 
-@lru_cache
 def get_ledger_service() -> LedgerService:
     """Single place that decides which ledger backend the whole app uses.
 

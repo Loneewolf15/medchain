@@ -1,6 +1,6 @@
 import enum
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (
     JSON,
@@ -42,7 +42,7 @@ class User(Base):
     full_name: Mapped[str] = mapped_column(String)
     role: Mapped[Role] = mapped_column(Enum(Role))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     patient_profile: Mapped["Patient | None"] = relationship(back_populates="user", uselist=False)
 
@@ -63,7 +63,7 @@ class Patient(Base):
     emergency_contact: Mapped[str | None] = mapped_column(String, nullable=True)
     blood_type: Mapped[str | None] = mapped_column(String, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User | None"] = relationship(back_populates="patient_profile")
     clinical_records: Mapped[list["ClinicalRecord"]] = relationship(back_populates="patient")
@@ -97,7 +97,7 @@ class AccessGrant(Base):
     granted_by_user_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
     scope: Mapped[AccessScope] = mapped_column(Enum(AccessScope))
 
-    granted_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    granted_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     ledger_tx_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -147,7 +147,7 @@ class ClinicalRecord(Base):
     record_type: Mapped[ClinicalRecordType] = mapped_column(Enum(ClinicalRecordType))
     data: Mapped[dict] = mapped_column(JSON)  # e.g. {"systolic":120,"diastolic":80,"heart_rate":72,...}
     source: Mapped[str] = mapped_column(String, default="manual")  # "manual" | "iot_simulator"
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     record_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     ledger_tx_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -174,7 +174,7 @@ class DiagnosticRecord(Base):
     kind: Mapped[DiagnosticKind] = mapped_column(Enum(DiagnosticKind))
     summary: Mapped[str] = mapped_column(Text)
     result_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     record_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     ledger_tx_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -191,7 +191,7 @@ class Prescription(Base):
     medication: Mapped[str] = mapped_column(String)
     dosage: Mapped[str] = mapped_column(String)
     instructions: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     record_hash: Mapped[str | None] = mapped_column(String, nullable=True)
     ledger_tx_id: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -219,4 +219,4 @@ class LedgerAnchor(Base):
     consensus_timestamp: Mapped[str | None] = mapped_column(String, nullable=True)
     transaction_id: Mapped[str | None] = mapped_column(String, nullable=True)
     simulated: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))

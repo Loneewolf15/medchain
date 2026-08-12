@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 
@@ -53,7 +53,7 @@ class AccessService:
         return row
 
     def revoke(self, grant: AccessGrant, revoked_by: User) -> AccessGrant:
-        grant.revoked_at = datetime.utcnow()
+        grant.revoked_at = datetime.now(timezone.utc)
 
         if self.ledger.enforces_access_onchain:
             self.ledger.revoke_access_onchain(

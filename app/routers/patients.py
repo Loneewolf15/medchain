@@ -55,12 +55,23 @@ def create_patient(
 
 
 @router.get("/{patient_id}", response_model=PatientOut)
-def get_patient(patient_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_patient(
+    patient_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    access: AccessService = Depends(get_access_service),
+):
     patient = db.get(Patient, patient_id)
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    if current_user.role == Role.PATIENT and patient.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not your record")
+
+    has_any_access = any(
+        access.is_authorized(patient_id=patient_id, user=current_user, scope=s)
+        for s in [AccessScope.CLINICAL, AccessScope.DIAGNOSTIC, AccessScope.ADMINISTRATIVE, AccessScope.ALL]
+    )
+    if not has_any_access:
+        raise HTTPException(status_code=403, detail="Not authorized to view this patient")
+
     return patient
 
 

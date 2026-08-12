@@ -129,3 +129,24 @@ def test_unauthorized_user_cannot_list_access_grants(hcs_client):
     # Attending doctor lists grants
     doc_resp = client.get(f"/patients/{patient_id}/access", headers=doctor_headers)
     assert doc_resp.status_code == 200
+
+
+def test_unauthorized_staff_cannot_read_patient_record(hcs_client):
+    client, ledger = hcs_client
+    doctor_headers = register_and_login(client, "dr.zainab.get@medchain.example.com", "doctor")
+    nurse_headers = register_and_login(client, "nurse.snooper@medchain.example.com", "nurse")
+
+    patient_id = client.post(
+        "/patients",
+        json={"full_name": "Tolu James", "date_of_birth": "1995-10-10", "gender": "male"},
+        headers=doctor_headers,
+    ).json()["id"]
+
+    # Unauthorized nurse tries to read patient record
+    resp = client.get(f"/patients/{patient_id}", headers=nurse_headers)
+    assert resp.status_code == 403
+
+    # Attending doctor reads patient record
+    doc_resp = client.get(f"/patients/{patient_id}", headers=doctor_headers)
+    assert doc_resp.status_code == 200
+
