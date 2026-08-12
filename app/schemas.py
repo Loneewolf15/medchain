@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.models import AccessScope, ClinicalRecordType, DiagnosticKind, Role
 
@@ -18,8 +18,7 @@ class UserOut(BaseModel):
     full_name: str
     role: Role
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
@@ -48,8 +47,7 @@ class PatientOut(BaseModel):
     emergency_contact: str | None
     blood_type: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Clinical -------------------------------------------------------------
@@ -69,8 +67,7 @@ class ClinicalRecordOut(BaseModel):
     record_hash: str | None
     ledger_tx_id: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Diagnostic -------------------------------------------------------------
@@ -90,8 +87,7 @@ class DiagnosticRecordOut(BaseModel):
     record_hash: str | None
     ledger_tx_id: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PrescriptionCreate(BaseModel):
@@ -110,8 +106,7 @@ class PrescriptionOut(BaseModel):
     record_hash: str | None
     ledger_tx_id: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Access control -------------------------------------------------------
@@ -129,8 +124,7 @@ class AccessGrantOut(BaseModel):
     revoked_at: datetime | None
     ledger_tx_id: str | None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # --- Ledger status ----------------------------------------------------------

@@ -65,11 +65,7 @@ def get_patient(
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
 
-    has_any_access = any(
-        access.is_authorized(patient_id=patient_id, user=current_user, scope=s)
-        for s in [AccessScope.CLINICAL, AccessScope.DIAGNOSTIC, AccessScope.ADMINISTRATIVE, AccessScope.ALL]
-    )
-    if not has_any_access:
+    if not access.has_any_grant(patient_id=patient_id, user=current_user):
         raise HTTPException(status_code=403, detail="Not authorized to view this patient")
 
     return patient

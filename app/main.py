@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 import logging
 
 from fastapi import FastAPI
@@ -10,6 +11,13 @@ from app.routers import access, auth, clinical, diagnostic, iot, ledger, patient
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
 app = FastAPI(
     title=settings.APP_NAME,
     description=(
@@ -19,6 +27,7 @@ app = FastAPI(
         f"({'simulated' if settings.LEDGER_SIMULATE else 'live testnet'})."
     ),
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -27,11 +36,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
 
 
 app.include_router(auth.router)

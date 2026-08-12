@@ -102,6 +102,33 @@ class AccessService:
         )
         return any(g.scope == scope or g.scope == AccessScope.ALL for g in grants)
 
+    def has_any_grant(self, *, patient_id: str, user: User) -> bool:
+        if user.role == Role.ADMIN:
+            return True
+
+        from app.models import Patient
+
+        patient = self.db.get(Patient, patient_id)
+        if patient and patient.user_id == user.id:
+            return True
+
+        if self.ledger.enforces_access_onchain:
+            for scope in [AccessScope.CLINICAL, AccessScope.DIAGNOSTIC, AccessScope.ADMINISTRATIVE, AccessScope.ALL]:
+                if self.ledger.check_access_onchain(patient_id=patient_id, grantee_id=user.id, scope=scope.value):
+                    return True
+            return False
+
+        grant = (
+            self.db.query(AccessGrant)
+            .filter(
+                AccessGrant.patient_id == patient_id,
+                AccessGrant.grantee_user_id == user.id,
+                AccessGrant.revoked_at.is_(None),
+            )
+            .first()
+        )
+        return grant is not None
+
     def log_view(self, *, patient_id: str, resource_type: str, resource_id: str, viewer: User) -> None:
         """Every read of clinical/diagnostic data gets an audit entry too,
         in both ledger modes — this is what makes 'who looked at my
