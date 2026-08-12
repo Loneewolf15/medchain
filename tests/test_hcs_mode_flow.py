@@ -150,3 +150,39 @@ def test_unauthorized_staff_cannot_read_patient_record(hcs_client):
     doc_resp = client.get(f"/patients/{patient_id}", headers=doctor_headers)
     assert doc_resp.status_code == 200
 
+
+def test_invalid_dob_format_rejected(hcs_client):
+    client, ledger = hcs_client
+    doctor_headers = register_and_login(client, "dr.dob@medchain.example.com", "doctor")
+
+    resp = client.post(
+        "/patients",
+        json={"full_name": "Invalid Date", "date_of_birth": "not-a-date", "gender": "male"},
+        headers=doctor_headers,
+    )
+    assert resp.status_code == 422
+
+
+def test_prescription_listing_logs_view_event(hcs_client):
+    client, ledger = hcs_client
+    doctor_headers = register_and_login(client, "dr.rx@medchain.example.com", "doctor")
+    patient_id = client.post(
+        "/patients",
+        json={"full_name": "Rx Patient", "date_of_birth": "2000-01-01", "gender": "female"},
+        headers=doctor_headers,
+    ).json()["id"]
+
+    client.post(
+        f"/patients/{patient_id}/prescriptions",
+        json={"medication": "Amoxicillin", "dosage": "500mg"},
+        headers=doctor_headers,
+    )
+
+    before = len(ledger.log)
+    client.get(f"/patients/{patient_id}/prescriptions", headers=doctor_headers)
+    after = len(ledger.log)
+    assert after == before + 1
+    assert ledger.log[-1]["action"] == "VIEW"
+    assert ledger.log[-1]["resource_type"] == "prescription"
+
+

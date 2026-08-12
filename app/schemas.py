@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from app.models import AccessScope, ClinicalRecordType, DiagnosticKind, Role
 
@@ -35,6 +35,15 @@ class PatientCreate(BaseModel):
     emergency_contact: str | None = None
     blood_type: str | None = None
     user_id: str | None = None
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def validate_dob(cls, v: str) -> str:
+        try:
+            datetime.strptime(v, "%Y-%m-%d")
+        except ValueError:
+            raise ValueError("date_of_birth must be in YYYY-MM-DD format")
+        return v
 
 
 class PatientOut(BaseModel):

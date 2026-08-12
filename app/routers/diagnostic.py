@@ -126,4 +126,9 @@ def list_prescriptions(
     _get_patient_or_404(db, patient_id)
     if not access.is_authorized(patient_id=patient_id, user=current_user, scope=AccessScope.DIAGNOSTIC):
         raise HTTPException(status_code=403, detail="No diagnostic access for this patient")
-    return db.query(Prescription).filter(Prescription.patient_id == patient_id).all()
+
+    rows = db.query(Prescription).filter(Prescription.patient_id == patient_id).all()
+    access.log_view(
+        patient_id=patient_id, resource_type="prescription", resource_id="list", viewer=current_user
+    )
+    return rows
