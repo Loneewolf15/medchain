@@ -13,7 +13,7 @@ python-jose[cryptography]==3.5.0
 pytest==9.1.1
 pytest-asyncio==1.4.0
 httpx==0.28.1
-psycopg2-binary==2.9.9
+pg8000==1.31.2
 
 # Optional: only needed if you run scripts/bootstrap_hedera.py --contract
 # to compile+deploy AccessControl.sol for LEDGER_MODE=smart_contract
