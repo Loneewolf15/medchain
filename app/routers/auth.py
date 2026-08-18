@@ -15,6 +15,23 @@ def read_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+@router.get("/me/patient", response_model=dict)
+def read_my_patient_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models import Patient
+    patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
+    if not patient:
+        raise HTTPException(status_code=404, detail="No patient profile found for this user")
+    return patient
+
+
+@router.get("/users", response_model=list[UserOut])
+def list_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    from app.models import Role
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Admin access required")
+    return db.query(User).all()
+
+
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
     if db.query(User).filter(User.email == payload.email).first():

@@ -10,7 +10,9 @@ from hiero_sdk_python import (
     PrivateKey,
     TopicCreateTransaction,
     TopicMessageSubmitTransaction,
+    TopicId,
 )
+from hiero_sdk_python.exceptions import PrecheckError
 
 from app.config import Settings
 from app.ledger.base import AnchorReceipt, LedgerService
@@ -73,8 +75,21 @@ class HcsLedgerService(LedgerService):
             },
             sort_keys=True,
         )
-        tx = TopicMessageSubmitTransaction(topic_id=self.topic_id, message=message)
-        result = tx.freeze_with(self.client).execute(self.client)
+        tx = TopicMessageSubmitTransaction(topic_id=TopicId.from_string(self.topic_id), message=message)
+        try:
+            result = tx.freeze_with(self.client).execute(self.client)
+        except PrecheckError as e:
+            if "DUPLICATE_TRANSACTION" in str(e):
+                logger.warning("Transaction was duplicate (likely SDK retry after network drop). Treating as success.")
+                return AnchorReceipt(
+                    transaction_id=str(getattr(tx, "transaction_id", "")),
+                    topic_id=str(self.topic_id),
+                    sequence_number=None,
+                    consensus_timestamp=None,
+                    simulated=True, # Mark as simulated since we lost the true receipt
+                )
+            raise
+            
         # execute() returns a TransactionReceipt-like object depending on SDK version;
         # topic_sequence_number / consensus_timestamp are populated by the network.
         return AnchorReceipt(

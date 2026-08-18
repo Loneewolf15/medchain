@@ -38,6 +38,18 @@ export async function getMe() {
   return res.json();
 }
 
+export async function getMyPatientProfile() {
+  const res = await fetch(`${API_URL}/auth/me/patient`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch patient profile");
+  return res.json();
+}
+
+export async function listUsers() {
+  const res = await fetch(`${API_URL}/auth/users`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch users");
+  return res.json();
+}
+
 export async function listPatients() {
   const res = await fetch(`${API_URL}/patients`, { headers: getHeaders() });
   if (!res.ok) throw new Error("Failed to fetch patients");
@@ -94,5 +106,104 @@ export async function revokeAccess(patientId: string, grantId: string) {
     headers: getHeaders(),
   });
   if (!res.ok) throw new Error("Failed to revoke access");
+  return res.json();
+}
+
+export async function createClinicalRecord(patientId: string, data: any) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/clinical-records`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create clinical record");
+  return res.json();
+}
+
+export async function createDiagnosticRecord(patientId: string, data: any) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/diagnostic-records`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create diagnostic record");
+  return res.json();
+}
+
+export async function triggerIotReading(patientId: string, forceAlert: boolean = false) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/iot/reading?force_alert=${forceAlert}`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to trigger reading");
+  return res.json();
+}
+
+export async function startIotSimulation(patientId: string) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/iot/start`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to start simulation");
+  return res.json();
+}
+
+export async function stopIotSimulation(patientId: string) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/iot/stop`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to stop simulation");
+  return res.json();
+}
+
+export async function updateIotSettings(patientId: string, settings: { hr_base: number, sys_base: number, dia_base: number, spo2_base: number }) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/iot/settings`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) throw new Error("Failed to update settings");
+  return res.json();
+}
+
+export async function listAppointments(patientId: string) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/appointments`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch appointments");
+  return res.json();
+}
+
+export async function createAppointment(patientId: string, data: { doctor_id: string, scheduled_at: string, reason: string }) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/appointments`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create appointment");
+  return res.json();
+}
+
+export async function updateAppointment(patientId: string, appointmentId: string, data: { status: string }) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/appointments/${appointmentId}`, {
+    method: "PATCH",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update appointment");
+  return res.json();
+}
+
+export async function listPrescriptions(patientId: string) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/prescriptions`, { headers: getHeaders() });
+  if (!res.ok) throw new Error("Failed to fetch prescriptions");
+  return res.json();
+}
+
+export async function createPrescription(patientId: string, data: { medication: string, dosage: string, instructions: string }) {
+  const res = await fetch(`${API_URL}/patients/${patientId}/prescriptions`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to create prescription");
   return res.json();
 }
