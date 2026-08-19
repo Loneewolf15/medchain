@@ -218,3 +218,27 @@ export async function createPrescription(patientId: string, data: { medication: 
   if (!res.ok) throw new Error("Failed to create prescription");
   return res.json();
 }
+
+export async function getMyAppointments() {
+  const res = await fetch(`${API_URL}/dashboard/appointments/me`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch my appointments");
+  return res.json();
+}
+
+export async function getAssignedPatients() {
+  const res = await fetch(`${API_URL}/dashboard/patients/assigned`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch assigned patients");
+  return res.json();
+}
+
+export async function getDashboardStats() {
+  const res = await fetch(`${API_URL}/dashboard/stats`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+  return res.json();
+}

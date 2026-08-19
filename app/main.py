@@ -6,7 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
 from app.database import init_db
-from app.routers import access, appointments, auth, clinical, diagnostic, iot, ledger, patients
+from app.routers import (
+    access,
+    appointments,
+    auth,
+    clinical,
+    diagnostic,
+    iot,
+    ledger,
+    patients,
+    dashboard,
+)
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
 
@@ -45,6 +55,7 @@ app.include_router(diagnostic.router)
 app.include_router(access.router)
 app.include_router(iot.router)
 app.include_router(ledger.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/")
