@@ -183,7 +183,7 @@ export async function listAppointments(patientId: string) {
   return res.json();
 }
 
-export async function createAppointment(patientId: string, data: { doctor_id: string, scheduled_at: string, reason: string }) {
+export async function createAppointment(patientId: string, data: { doctor_id?: string, scheduled_at?: string, reason: string }) {
   const res = await fetch(`${API_URL}/patients/${patientId}/appointments`, {
     method: "POST",
     headers: getHeaders(),
@@ -193,7 +193,7 @@ export async function createAppointment(patientId: string, data: { doctor_id: st
   return res.json();
 }
 
-export async function updateAppointment(patientId: string, appointmentId: string, data: { status: string }) {
+export async function updateAppointment(patientId: string, appointmentId: string, data: { status?: string, doctor_id?: string, scheduled_at?: string }) {
   const res = await fetch(`${API_URL}/patients/${patientId}/appointments/${appointmentId}`, {
     method: "PATCH",
     headers: getHeaders(),

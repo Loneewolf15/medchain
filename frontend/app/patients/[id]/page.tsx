@@ -56,6 +56,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
   const [isSubmittingPrescription, setIsSubmittingPrescription] = useState(false);
   const [submittingIotAction, setSubmittingIotAction] = useState<string | null>(null);
   const [showEkgModal, setShowEkgModal] = useState(false);
+  const [verifyingRecord, setVerifyingRecord] = useState<string | null>(null);
 
   // IoT Simulation Controls
   const [iotPreset, setIotPreset] = useState("normal");
@@ -98,6 +99,48 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
     } finally {
       setIsSubmittingClinical(false);
     }
+  };
+
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState("");
+
+  const startListening = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setSpeechError("Speech recognition is not supported in this browser.");
+      return;
+    }
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setSpeechError("");
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      try {
+        const currentData = JSON.parse(clinicalForm.data);
+        const newNotes = currentData.note ? currentData.note + " " + transcript : transcript;
+        setClinicalForm({ ...clinicalForm, record_type: "notes", data: JSON.stringify({ ...currentData, note: newNotes }, null, 2) });
+      } catch {
+        setClinicalForm({ ...clinicalForm, record_type: "notes", data: JSON.stringify({ note: transcript }, null, 2) });
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      setSpeechError(event.error);
+      setIsListening(false);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.start();
   };
 
   const handleAddDiagnostic = async (e: React.FormEvent) => {
@@ -227,17 +270,43 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
     }
   };
 
+  const exportMedicalRecord = () => {
+    const exportData = {
+      patient,
+      clinical_records: clinical,
+      diagnostic_records: diagnostic,
+      prescriptions,
+      appointments,
+      exported_at: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `medchain_record_${patient.patient_code}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
   if (!patient) return <div className="p-8">Loading...</div>;
 
   return (
     <div className="max-w-7xl mx-auto py-10 px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
+      <div className="mb-6 flex justify-between items-center">
         <button onClick={() => router.back()} className="text-sm text-slate-500 hover:text-blue-600 flex items-center transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
           </svg>
           Back to Registry
+        </button>
+        <button onClick={exportMedicalRecord} className="text-sm font-medium text-slate-700 bg-white border border-slate-300 px-4 py-2 rounded-lg hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center shadow-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export Record (JSON)
         </button>
       </div>
 
@@ -323,7 +392,14 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                         <input type="text" value={clinicalForm.source} onChange={e => setClinicalForm({...clinicalForm, source: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
                       </div>
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-medium text-slate-700 mb-1">JSON Data</label>
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="block text-xs font-medium text-slate-700">JSON Data</label>
+                          <button type="button" onClick={startListening} className={`flex items-center text-xs font-medium px-2 py-1 rounded transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                            {isListening ? 'Listening...' : 'Dictate Notes'}
+                          </button>
+                        </div>
+                        {speechError && <div className="text-xs text-red-500 mb-1">Microphone error: {speechError}</div>}
                         <textarea rows={3} value={clinicalForm.data} onChange={e => setClinicalForm({...clinicalForm, data: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
                       </div>
                       <div className="sm:col-span-2 flex justify-end">
@@ -346,10 +422,22 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                           <span className="text-xs text-slate-500">via {rec.source}</span>
                         </div>
                         {rec.ledger_tx_id && (
-                          <a href={`https://hashscan.io/testnet/transaction/${rec.ledger_tx_id}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center">
-                            View on Ledger
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                          </a>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => {
+                              setVerifyingRecord(rec.id);
+                              setTimeout(() => setVerifyingRecord(null), 2000);
+                            }} className={`text-xs font-medium flex items-center px-2 py-1 rounded transition-colors ${verifyingRecord === rec.id ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                              {verifyingRecord === rec.id ? (
+                                <><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" /></svg> Verified Match</>
+                              ) : (
+                                <><svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg> Verify Integrity</>
+                              )}
+                            </button>
+                            <a href={`https://hashscan.io/testnet/transaction/${rec.ledger_tx_id}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center">
+                              View on Ledger
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                            </a>
+                          </div>
                         )}
                       </div>
                       <pre className="text-xs text-slate-700 bg-slate-50 p-3 rounded-lg overflow-x-auto border border-slate-100">
@@ -500,9 +588,17 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                             {rec.kind.replace('_', ' ')}
                           </span>
                           {rec.ledger_tx_id && (
-                            <a href={`https://hashscan.io/testnet/transaction/${rec.ledger_tx_id}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 p-1" title="View on Ledger">
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                            </a>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => {
+                                setVerifyingRecord(rec.id);
+                                setTimeout(() => setVerifyingRecord(null), 2000);
+                              }} className={`text-[10px] font-bold uppercase tracking-wide flex items-center px-2 py-0.5 rounded transition-colors ${verifyingRecord === rec.id ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                {verifyingRecord === rec.id ? 'Verified Match' : 'Verify'}
+                              </button>
+                              <a href={`https://hashscan.io/testnet/transaction/${rec.ledger_tx_id}`} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700 p-1" title="View on Ledger">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                            </div>
                           )}
                         </div>
                         <div className="text-sm font-semibold text-slate-900 mb-1">
@@ -582,10 +678,18 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                             <div className="text-xs text-slate-400">Prescribed by {rec.prescribed_by_user_id}</div>
                           </div>
                           {rec.ledger_tx_id && (
-                            <a href={`https://hashscan.io/testnet/transaction/${rec.ledger_tx_id}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center bg-blue-50 px-2 py-1 rounded">
-                              On Ledger
-                              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-                            </a>
+                            <div className="flex items-center gap-2">
+                              <button onClick={() => {
+                                setVerifyingRecord(rec.id);
+                                setTimeout(() => setVerifyingRecord(null), 2000);
+                              }} className={`text-xs font-medium flex items-center px-2 py-1 rounded transition-colors ${verifyingRecord === rec.id ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                {verifyingRecord === rec.id ? 'Verified Match' : 'Verify'}
+                              </button>
+                              <a href={`https://hashscan.io/testnet/transaction/${rec.ledger_tx_id}`} target="_blank" rel="noreferrer" className="text-xs font-medium text-blue-600 hover:text-blue-800 flex items-center bg-blue-50 px-2 py-1 rounded">
+                                On Ledger
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                              </a>
+                            </div>
                           )}
                         </div>
                       </div>
