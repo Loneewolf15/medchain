@@ -33,7 +33,7 @@ export default function NewPatientPage() {
     try {
       // 1. Generate patient credentials
       const cleanName = formData.full_name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const email = `${cleanName}@medchain.local`;
+      const email = `${cleanName}@patient.medchain.com`;
       const password = generatePassword();
       
       // 2. Register user account for patient
