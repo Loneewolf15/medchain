@@ -44,6 +44,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
   // Form states
   const [clinicalForm, setClinicalForm] = useState({ record_type: "vitals", data: "{}", source: "device" });
   const [diagnosticForm, setDiagnosticForm] = useState({ kind: "blood_test", summary: "", result_data: {} as Record<string, any> });
+  const [diagnosticFields, setDiagnosticFields] = useState([{ key: "", value: "" }]);
   const [grantForm, setGrantForm] = useState({ grantee_user_id: "", scope: "clinical" });
   const [appointmentForm, setAppointmentForm] = useState({ doctor_id: "", scheduled_at: "", reason: "" });
   const [prescriptionForm, setPrescriptionForm] = useState({ medication: "", dosage: "", instructions: "" });
@@ -104,9 +105,20 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
     if (isSubmittingDiagnostic) return;
     setIsSubmittingDiagnostic(true);
     try {
-      await createDiagnosticRecord(id, diagnosticForm);
+      let finalResultData = { ...diagnosticForm.result_data };
+      if (['pathology', 'genetics', 'other'].includes(diagnosticForm.kind)) {
+        finalResultData = diagnosticFields.reduce((acc, field) => {
+          if (field.key.trim() !== "") {
+            acc[field.key.trim()] = field.value;
+          }
+          return acc;
+        }, {} as Record<string, any>);
+      }
+
+      await createDiagnosticRecord(id, { ...diagnosticForm, result_data: finalResultData });
       fetchData();
       setDiagnosticForm({ kind: "blood_test", summary: "", result_data: {} });
+      setDiagnosticFields([{ key: "", value: "" }]);
     } catch (err: any) {
       alert("Error adding record: " + err.message);
     } finally {
@@ -261,7 +273,11 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
               { id: "appointments", label: "Appointments", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
               { id: "grants", label: "Access Control", icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" },
               { id: "iot", label: "IoT Telemetry", icon: "M13 10V3L4 14h7v7l9-11h-7z" }
-            ].filter(tab => currentUser?.role !== "patient" || ["clinical", "diagnostic", "appointments"].includes(tab.id)).map((tab) => (
+            ].filter(tab => {
+              if (currentUser?.role === "patient") return ["clinical", "diagnostic", "appointments"].includes(tab.id);
+              if (["nurse", "lab_scientist"].includes(currentUser?.role)) return ["clinical", "diagnostic", "appointments"].includes(tab.id);
+              return true; // admin, doctor see everything
+            }).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -291,7 +307,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                   <h2 className="text-xl font-bold text-slate-900">Clinical Records</h2>
                 </div>
 
-                {currentUser?.role !== "patient" && (
+                {["admin", "doctor", "nurse"].includes(currentUser?.role) && (
                   <div className="bg-slate-50 rounded-xl p-5 mb-8 border border-slate-200">
                     <h3 className="font-semibold text-slate-900 mb-4 text-sm">Add New Record</h3>
                     <form onSubmit={handleAddClinical} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -362,13 +378,13 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
               <div>
                 <h2 className="text-xl font-bold text-slate-900 mb-6">Diagnostic Records</h2>
                 
-                {currentUser?.role !== "patient" && (
+                {["admin", "doctor", "lab_scientist"].includes(currentUser?.role) && (
                   <div className="bg-slate-50 rounded-xl p-5 mb-8 border border-slate-200">
                     <h3 className="font-semibold text-slate-900 mb-4 text-sm">Add New Diagnostic</h3>
                   <form onSubmit={handleAddDiagnostic} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-xs font-medium text-slate-700 mb-1">Kind</label>
-                      <select value={diagnosticForm.kind} onChange={e => setDiagnosticForm({ kind: e.target.value, summary: "", result_data: {} })} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+                      <select value={diagnosticForm.kind} onChange={e => { setDiagnosticForm({ kind: e.target.value, summary: "", result_data: {} }); setDiagnosticFields([{ key: "", value: "" }]); }} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                         <option value="blood_test">Blood Test</option>
                         <option value="imaging">Imaging</option>
                         <option value="pathology">Pathology</option>
@@ -419,10 +435,50 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                       
                       {['pathology', 'genetics', 'other'].includes(diagnosticForm.kind) && (
                         <div className="sm:col-span-2">
-                          <label className="block text-xs font-semibold text-slate-500 mb-1">Raw Result Data (JSON)</label>
-                          <textarea rows={2} onChange={e => {
-                            try { setDiagnosticForm(prev => ({...prev, result_data: JSON.parse(e.target.value)})); } catch(err) {}
-                          }} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder='{"key": "value"}' />
+                          <label className="block text-xs font-semibold text-slate-500 mb-2">Record Data</label>
+                          <div className="space-y-3 bg-white p-4 border border-slate-200 rounded-lg">
+                            {diagnosticFields.map((field, index) => (
+                              <div key={index} className="flex items-center gap-3">
+                                <input 
+                                  type="text" 
+                                  placeholder="Measurement (e.g., Blood Sugar)" 
+                                  value={field.key} 
+                                  onChange={e => {
+                                    const newFields = [...diagnosticFields];
+                                    newFields[index].key = e.target.value;
+                                    setDiagnosticFields(newFields);
+                                  }} 
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                />
+                                <input 
+                                  type="text" 
+                                  placeholder="Value (e.g., 90 mg/dL)" 
+                                  value={field.value} 
+                                  onChange={e => {
+                                    const newFields = [...diagnosticFields];
+                                    newFields[index].value = e.target.value;
+                                    setDiagnosticFields(newFields);
+                                  }} 
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                />
+                                <button type="button" onClick={() => {
+                                  const newFields = [...diagnosticFields];
+                                  newFields.splice(index, 1);
+                                  setDiagnosticFields(newFields);
+                                }} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                            <button type="button" onClick={() => setDiagnosticFields([...diagnosticFields, { key: "", value: "" }])} className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Add Field
+                            </button>
+                          </div>
                         </div>
                       )}
 
@@ -489,7 +545,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                 <div className="mt-12">
                   <h2 className="text-xl font-bold text-slate-900 mb-6">Prescriptions</h2>
                   
-                  {currentUser?.role !== "patient" && (
+                  {["admin", "doctor"].includes(currentUser?.role) && (
                     <div className="bg-slate-50 rounded-xl p-5 mb-8 border border-slate-200">
                       <h3 className="font-semibold text-slate-900 mb-4 text-sm">Write New Prescription</h3>
                       <form onSubmit={handleAddPrescription} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -545,7 +601,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
               <div>
                 <h2 className="text-xl font-bold text-slate-900 mb-6">Appointments</h2>
                 
-                {currentUser?.role !== "patient" && (
+                {currentUser?.role === "admin" && (
                   <div className="bg-slate-50 rounded-xl p-5 mb-8 border border-slate-200">
                     <h3 className="font-semibold text-slate-900 mb-4 text-sm">Schedule Appointment</h3>
                     <form onSubmit={handleAddAppointment} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -576,7 +632,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                 )}
 
                 <div className="space-y-4">
-                  {appointments.map((appt) => (
+                  {appointments.filter((appt) => currentUser?.role === "admin" || currentUser?.role === "patient" || appt.doctor_id === currentUser?.id).map((appt) => (
                     <div key={appt.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-blue-100 transition-all flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
@@ -592,7 +648,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                         <div className="text-xs text-slate-500 mt-1">Doctor: {appt.doctor_id}</div>
                       </div>
                       
-                      {currentUser?.role !== "patient" && appt.status === 'scheduled' && (
+                      {["admin", "doctor"].includes(currentUser?.role) && appt.status === 'scheduled' && (
                         <div className="flex gap-2">
                           <button onClick={async () => {
                             try {
@@ -614,7 +670,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                       )}
                     </div>
                   ))}
-                  {appointments.length === 0 && <div className="text-center py-10 text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/50">No appointments scheduled.</div>}
+                  {appointments.filter((appt) => currentUser?.role === "admin" || currentUser?.role === "patient" || appt.doctor_id === currentUser?.id).length === 0 && <div className="text-center py-10 text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/50">No appointments scheduled.</div>}
                 </div>
               </div>
             )}

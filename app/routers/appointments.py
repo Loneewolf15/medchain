@@ -32,7 +32,8 @@ def create_appointment(
     access: AccessService = Depends(get_access_service),
 ):
     _get_patient_or_404(db, patient_id)
-    _require_staff_or_admin(current_user)
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status_code=403, detail="Only administrative staff can schedule appointments")
 
     if not access.has_any_grant(patient_id=patient_id, user=current_user):
         raise HTTPException(status_code=403, detail="Not authorized for this patient")
