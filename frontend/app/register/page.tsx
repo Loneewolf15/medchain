@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { register } from "@/lib/api";
 import Link from "next/link";
+import Spinner from "@/components/Spinner";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -13,16 +14,21 @@ export default function RegisterPage() {
     role: "doctor",
   });
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setError("");
     try {
       await register(formData);
       // Automatically redirect to login after successful registration
       router.push("/login?registered=true");
     } catch (err: any) {
       setError(err.message || "Failed to register");
+      setIsSubmitting(false);
     }
   };
 
@@ -85,9 +91,17 @@ export default function RegisterPage() {
           <div>
             <button
               type="submit"
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              disabled={isSubmitting}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              Register
+              {isSubmitting ? (
+                <>
+                  <Spinner className="w-5 h-5 mr-2" />
+                  Registering...
+                </>
+              ) : (
+                "Register"
+              )}
             </button>
           </div>
           <div className="text-center">
