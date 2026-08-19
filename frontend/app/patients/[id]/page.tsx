@@ -49,6 +49,18 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
   const [appointmentForm, setAppointmentForm] = useState({ doctor_id: "", scheduled_at: "", reason: "" });
   const [prescriptionForm, setPrescriptionForm] = useState({ medication: "", dosage: "", instructions: "" });
   
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (activeTab === 'iot') {
+      interval = setInterval(() => {
+        fetchData();
+      }, 5000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeTab, id]);
+  
   const [isSubmittingClinical, setIsSubmittingClinical] = useState(false);
   const [isSubmittingDiagnostic, setIsSubmittingDiagnostic] = useState(false);
   const [isSubmittingGrant, setIsSubmittingGrant] = useState(false);

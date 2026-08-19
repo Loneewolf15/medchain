@@ -42,6 +42,60 @@ def trigger_reading(
     _require_clinical_write(db, patient_id, current_user, access)
     return create_and_anchor_vitals(patient_id, force_alert=force_alert)
 
+class IngestPayload(BaseModel):
+    payload: dict
+    signature: str
+
+@router.post("/ingest", response_model=ClinicalRecordOut)
+def ingest_external_reading(
+    patient_id: str,
+    data: IngestPayload,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+):
+    """Ingest a reading from a real external IoT hardware device via webhook.
+    Requires a valid HMAC SHA-256 signature to prevent spoofing. No user auth required."""
+    import hmac
+    import hashlib
+    import json
+    from app.iot_simulator import DEVICE_SECRET_KEY
+    from app.models import ClinicalRecord, ClinicalRecordType
+    from app.services.record_service import RecordService
+    from app.ledger.factory import get_ledger_service
+
+    if not db.get(Patient, patient_id):
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    payload_str = json.dumps(data.payload, sort_keys=True).encode('utf-8')
+    expected_signature = hmac.new(DEVICE_SECRET_KEY, payload_str, hashlib.sha256).hexdigest()
+    
+    if not hmac.compare_digest(expected_signature, data.signature):
+        raise HTTPException(status_code=401, detail="Invalid IoT Device Signature! Spoofing detected.")
+
+    reading = data.payload
+    row = ClinicalRecord(
+        patient_id=patient_id,
+        record_type=ClinicalRecordType.VITALS,
+        data=reading,
+        source="external_iot_device",
+    )
+    db.add(row)
+    db.flush()
+
+    # Anchor to Hedera if alert
+    if reading.get("is_alert", False):
+        ledger = get_ledger_service()
+        record_service = RecordService(db, ledger, settings.LEDGER_MODE.value)
+        record_hash, tx_id = record_service.anchor(
+            resource_type="clinical_record", resource_id=row.id, payload={"record_type": "vitals", "data": reading}
+        )
+        row.record_hash = record_hash
+        row.ledger_tx_id = tx_id
+
+    db.commit()
+    db.refresh(row)
+    return row
+
 
 @router.post("/start")
 async def start_continuous(
