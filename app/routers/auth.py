@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import User
-from app.schemas import Token, UserCreate, UserOut
+from app.schemas import Token, UserCreate, UserOut, PatientOut
 from app.security import create_access_token, get_current_user, hash_password, verify_password
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -15,7 +15,7 @@ def read_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
-@router.get("/me/patient", response_model=dict)
+@router.get("/me/patient", response_model=PatientOut)
 def read_my_patient_profile(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     from app.models import Patient
     patient = db.query(Patient).filter(Patient.user_id == current_user.id).first()
