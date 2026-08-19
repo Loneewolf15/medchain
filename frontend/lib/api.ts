@@ -14,7 +14,14 @@ export async function register(data: any) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
-  if (!res.ok) throw new Error("Registration failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    if (err && err.detail) {
+      if (Array.isArray(err.detail)) throw new Error(err.detail[0].msg);
+      throw new Error(err.detail);
+    }
+    throw new Error("Registration failed");
+  }
   return res.json();
 }
 
@@ -28,7 +35,11 @@ export async function login(email: string, password: string) {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: formData.toString(),
   });
-  if (!res.ok) throw new Error("Login failed");
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    if (err && err.detail) throw new Error(err.detail);
+    throw new Error("Login failed");
+  }
   return res.json();
 }
 
