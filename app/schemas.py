@@ -151,20 +151,22 @@ class LedgerStatusOut(BaseModel):
 
 # --- Appointments -------------------------------------------------------------
 class AppointmentCreate(BaseModel):
-    doctor_id: str
-    scheduled_at: datetime
+    doctor_id: str | None = None
+    scheduled_at: datetime | None = None
     reason: str | None = None
 
 
 class AppointmentUpdate(BaseModel):
     status: AppointmentStatus
+    doctor_id: str | None = None
+    scheduled_at: datetime | None = None
 
 
 class AppointmentOut(BaseModel):
     id: str
     patient_id: str
-    doctor_id: str
-    scheduled_at: datetime
+    doctor_id: str | None
+    scheduled_at: datetime | None
     reason: str | None
     status: AppointmentStatus
 

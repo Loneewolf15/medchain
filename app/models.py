@@ -22,6 +22,7 @@ def _uuid() -> str:
 
 class Role(str, enum.Enum):
     ADMIN = "admin"
+    SECRETARY = "secretary"
     DOCTOR = "doctor"
     NURSE = "nurse"
     LAB_SCIENTIST = "lab_scientist"
@@ -110,6 +111,7 @@ class AccessGrant(Base):
 
 
 class AppointmentStatus(str, enum.Enum):
+    REQUESTED = "requested"
     SCHEDULED = "scheduled"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
@@ -120,10 +122,10 @@ class Appointment(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True, default=_uuid)
     patient_id: Mapped[str] = mapped_column(ForeignKey("patients.id"))
-    doctor_id: Mapped[str] = mapped_column(ForeignKey("users.id"))
-    scheduled_at: Mapped[datetime] = mapped_column(DateTime)
+    doctor_id: Mapped[str | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    scheduled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     reason: Mapped[str | None] = mapped_column(String, nullable=True)
-    status: Mapped[AppointmentStatus] = mapped_column(Enum(AppointmentStatus), default=AppointmentStatus.SCHEDULED)
+    status: Mapped[AppointmentStatus] = mapped_column(Enum(AppointmentStatus), default=AppointmentStatus.REQUESTED)
 
     patient: Mapped["Patient"] = relationship(back_populates="appointments")
 

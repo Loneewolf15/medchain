@@ -601,30 +601,59 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
               <div>
                 <h2 className="text-xl font-bold text-slate-900 mb-6">Appointments</h2>
                 
-                {currentUser?.role === "admin" && (
+                {["admin", "secretary", "doctor", "patient"].includes(currentUser?.role) && (
                   <div className="bg-slate-50 rounded-xl p-5 mb-8 border border-slate-200">
-                    <h3 className="font-semibold text-slate-900 mb-4 text-sm">Schedule Appointment</h3>
+                    <h3 className="font-semibold text-slate-900 mb-4 text-sm">
+                      {currentUser?.role === "patient" ? "Request an Appointment" : "Schedule Appointment"}
+                    </h3>
                     <form onSubmit={handleAddAppointment} className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                      {currentUser?.role !== "doctor" && (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-700 mb-1">
+                            {currentUser?.role === "patient" ? "Preferred Doctor (Optional)" : "Assign Doctor"}
+                          </label>
+                          <select 
+                            required={currentUser?.role !== "patient"} 
+                            value={appointmentForm.doctor_id} 
+                            onChange={e => setAppointmentForm({...appointmentForm, doctor_id: e.target.value})} 
+                            className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          >
+                            <option value="">{currentUser?.role === "patient" ? "No preference" : "Select a doctor..."}</option>
+                            {doctors.map(doc => (
+                              <option key={doc.id} value={doc.id}>{doc.full_name} ({doc.role})</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                      
                       <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Assign Doctor</label>
-                        <select required value={appointmentForm.doctor_id} onChange={e => setAppointmentForm({...appointmentForm, doctor_id: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-                          <option value="">Select a doctor...</option>
-                          {doctors.map(doc => (
-                            <option key={doc.id} value={doc.id}>{doc.full_name} ({doc.role})</option>
-                          ))}
-                        </select>
+                        <label className="block text-xs font-medium text-slate-700 mb-1">
+                          {currentUser?.role === "patient" ? "Preferred Time (Optional)" : "Scheduled At"}
+                        </label>
+                        <input 
+                          type="datetime-local" 
+                          required={currentUser?.role !== "patient"} 
+                          value={appointmentForm.scheduled_at} 
+                          onChange={e => setAppointmentForm({...appointmentForm, scheduled_at: e.target.value})} 
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                        />
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-slate-700 mb-1">Scheduled At</label>
-                        <input type="datetime-local" required value={appointmentForm.scheduled_at} onChange={e => setAppointmentForm({...appointmentForm, scheduled_at: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                      </div>
+                      
                       <div className="sm:col-span-2">
                         <label className="block text-xs font-medium text-slate-700 mb-1">Reason for Visit</label>
-                        <input type="text" required value={appointmentForm.reason} onChange={e => setAppointmentForm({...appointmentForm, reason: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="e.g. Annual Checkup, Follow-up for Hypertension" />
+                        <input 
+                          type="text" 
+                          required 
+                          value={appointmentForm.reason} 
+                          onChange={e => setAppointmentForm({...appointmentForm, reason: e.target.value})} 
+                          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                          placeholder="e.g. Annual Checkup, Follow-up for Hypertension" 
+                        />
                       </div>
+                      
                       <div className="sm:col-span-2 pt-2">
                         <button type="submit" disabled={isSubmittingAppointment} className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 disabled:opacity-50 flex items-center justify-center">
-                          {isSubmittingAppointment ? <><Spinner className="w-4 h-4 mr-2" /> Scheduling...</> : "Schedule Appointment"}
+                          {isSubmittingAppointment ? <><Spinner className="w-4 h-4 mr-2" /> Processing...</> : (currentUser?.role === "patient" ? "Request Appointment" : "Schedule Appointment")}
                         </button>
                       </div>
                     </form>
@@ -632,45 +661,75 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                 )}
 
                 <div className="space-y-4">
-                  {appointments.filter((appt) => currentUser?.role === "admin" || currentUser?.role === "patient" || appt.doctor_id === currentUser?.id).map((appt) => (
-                    <div key={appt.id} className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm hover:border-blue-100 transition-all flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                  {appointments.filter((appt) => ["admin", "secretary"].includes(currentUser?.role) || currentUser?.role === "patient" || appt.doctor_id === currentUser?.id).map((appt) => (
+                    <div key={appt.id} className={`border border-slate-200 rounded-xl p-5 shadow-sm transition-all flex flex-col sm:flex-row justify-between sm:items-center gap-4 ${appt.status === 'requested' ? 'bg-orange-50/50 hover:border-orange-200' : 'bg-white hover:border-blue-100'}`}>
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium uppercase
                             ${appt.status === 'scheduled' ? 'bg-blue-100 text-blue-800' : 
                               appt.status === 'completed' ? 'bg-green-100 text-green-800' : 
+                              appt.status === 'requested' ? 'bg-orange-100 text-orange-800' : 
                               'bg-red-100 text-red-800'}`}>
                             {appt.status}
                           </span>
-                          <span className="text-sm font-bold text-slate-900">{new Date(appt.scheduled_at).toLocaleString()}</span>
+                          {appt.scheduled_at && <span className="text-sm font-bold text-slate-900">{new Date(appt.scheduled_at).toLocaleString()}</span>}
+                          {!appt.scheduled_at && <span className="text-sm font-semibold text-orange-600 italic">Pending Assignment</span>}
                         </div>
                         <div className="text-sm text-slate-700 font-medium">{appt.reason}</div>
-                        <div className="text-xs text-slate-500 mt-1">Doctor: {appt.doctor_id}</div>
+                        <div className="text-xs text-slate-500 mt-1">Doctor: {appt.doctor_id || 'Unassigned'}</div>
                       </div>
                       
-                      {["admin", "doctor"].includes(currentUser?.role) && appt.status === 'scheduled' && (
-                        <div className="flex gap-2">
-                          <button onClick={async () => {
+                      <div className="flex flex-col gap-2">
+                        {/* Status update actions for Admin/Secretary/Doctor */}
+                        {["admin", "secretary", "doctor"].includes(currentUser?.role) && appt.status === 'scheduled' && (
+                          <div className="flex gap-2">
+                            <button onClick={async () => {
+                              try {
+                                await updateAppointment(id, appt.id, { status: "completed" });
+                                fetchData();
+                              } catch (e: any) { alert(e.message); }
+                            }} className="px-3 py-1.5 text-xs font-medium bg-green-50 text-green-700 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
+                              Complete
+                            </button>
+                            <button onClick={async () => {
+                              try {
+                                await updateAppointment(id, appt.id, { status: "cancelled" });
+                                fetchData();
+                              } catch (e: any) { alert(e.message); }
+                            }} className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-lg border border-red-200 hover:bg-red-100 transition-colors">
+                              Cancel
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Assignment actions for Admin/Secretary when status is REQUESTED */}
+                        {["admin", "secretary"].includes(currentUser?.role) && appt.status === 'requested' && (
+                          <form onSubmit={async (e) => {
+                            e.preventDefault();
+                            const formData = new FormData(e.currentTarget);
+                            const docId = formData.get("doc_id") as string;
+                            const schedAt = formData.get("sched_at") as string;
+                            if (!docId || !schedAt) {
+                              alert("Please assign both doctor and time to confirm.");
+                              return;
+                            }
                             try {
-                              await updateAppointment(id, appt.id, { status: "completed" });
+                              await updateAppointment(id, appt.id, { status: "scheduled", doctor_id: docId, scheduled_at: schedAt });
                               fetchData();
-                            } catch (e: any) { alert(e.message); }
-                          }} className="px-3 py-1.5 text-xs font-medium bg-green-50 text-green-700 rounded-lg border border-green-200 hover:bg-green-100 transition-colors">
-                            Complete
-                          </button>
-                          <button onClick={async () => {
-                            try {
-                              await updateAppointment(id, appt.id, { status: "cancelled" });
-                              fetchData();
-                            } catch (e: any) { alert(e.message); }
-                          }} className="px-3 py-1.5 text-xs font-medium bg-red-50 text-red-700 rounded-lg border border-red-200 hover:bg-red-100 transition-colors">
-                            Cancel
-                          </button>
-                        </div>
-                      )}
+                            } catch (err: any) { alert(err.message); }
+                          }} className="flex items-center gap-2 mt-2 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                            <select name="doc_id" required defaultValue={appt.doctor_id || ""} className="text-xs px-2 py-1.5 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                              <option value="">Assign Doc...</option>
+                              {doctors.map(doc => <option key={doc.id} value={doc.id}>{doc.full_name}</option>)}
+                            </select>
+                            <input name="sched_at" type="datetime-local" required defaultValue={appt.scheduled_at ? appt.scheduled_at.slice(0, 16) : ""} className="text-xs px-2 py-1.5 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                            <button type="submit" className="px-2 py-1 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700">Confirm</button>
+                          </form>
+                        )}
+                      </div>
                     </div>
                   ))}
-                  {appointments.filter((appt) => currentUser?.role === "admin" || currentUser?.role === "patient" || appt.doctor_id === currentUser?.id).length === 0 && <div className="text-center py-10 text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/50">No appointments scheduled.</div>}
+                  {appointments.filter((appt) => ["admin", "secretary"].includes(currentUser?.role) || currentUser?.role === "patient" || appt.doctor_id === currentUser?.id).length === 0 && <div className="text-center py-10 text-slate-500 text-sm border border-dashed border-slate-200 rounded-xl bg-slate-50/50">No appointments scheduled or requested.</div>}
                 </div>
               </div>
             )}
