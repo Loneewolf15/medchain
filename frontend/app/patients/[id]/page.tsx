@@ -42,8 +42,9 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
   const [error, setError] = useState("");
 
   // Form states
-  const [clinicalForm, setClinicalForm] = useState({ record_type: "vitals", data: "{}", source: "device" });
-  const [diagnosticForm, setDiagnosticForm] = useState({ kind: "blood_test", summary: "", result_data: {} as Record<string, any> });
+  const [clinicalForm, setClinicalForm] = useState({ record_type: "vitals", data: "", source: "manual" });
+  const [clinicalFields, setClinicalFields] = useState([{ key: "", value: "" }]);
+  const [isSubmittingClinical, setIsSubmittingClinical] = useState(false);
   const [diagnosticFields, setDiagnosticFields] = useState([{ key: "", value: "" }]);
   const [grantForm, setGrantForm] = useState({ grantee_user_id: "", scope: "clinical" });
   const [appointmentForm, setAppointmentForm] = useState({ doctor_id: "", scheduled_at: "", reason: "" });
@@ -102,10 +103,26 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
     if (isSubmittingClinical) return;
     setIsSubmittingClinical(true);
     try {
-      const parsedData = JSON.parse(clinicalForm.data);
+      let parsedData: Record<string, any> = {};
+      if (clinicalForm.record_type === "notes") {
+        try {
+          parsedData = JSON.parse(clinicalForm.data || "{}");
+        } catch {
+          parsedData = { note: clinicalForm.data };
+        }
+      } else {
+        parsedData = clinicalFields.reduce((acc, field) => {
+          if (field.key.trim() !== "") {
+            acc[field.key.trim()] = field.value;
+          }
+          return acc;
+        }, {} as Record<string, any>);
+      }
+      
       await createClinicalRecord(id, { ...clinicalForm, data: parsedData });
       fetchData();
-      setClinicalForm({ record_type: "vitals", data: "{}", source: "device" });
+      setClinicalForm({ record_type: "vitals", data: "", source: "manual" });
+      setClinicalFields([{ key: "", value: "" }]);
     } catch (err: any) {
       alert("Error adding record: " + err.message);
     } finally {
@@ -135,7 +152,7 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
     recognition.onresult = (event: any) => {
       const transcript = event.results[0][0].transcript;
       try {
-        const currentData = JSON.parse(clinicalForm.data);
+        const currentData = JSON.parse(clinicalForm.data || "{}");
         const newNotes = currentData.note ? currentData.note + " " + transcript : transcript;
         setClinicalForm({ ...clinicalForm, record_type: "notes", data: JSON.stringify({ ...currentData, note: newNotes }, null, 2) });
       } catch {
@@ -201,7 +218,14 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
     if (isSubmittingAppointment) return;
     setIsSubmittingAppointment(true);
     try {
-      await createAppointment(id, appointmentForm);
+      const payload = { ...appointmentForm };
+      if (!payload.doctor_id) {
+        payload.doctor_id = undefined as any;
+      }
+      if (!payload.scheduled_at) {
+        payload.scheduled_at = undefined as any;
+      }
+      await createAppointment(id, payload);
       fetchData();
       setAppointmentForm({ doctor_id: "", scheduled_at: "", reason: "" });
     } catch (err: any) {
@@ -404,15 +428,64 @@ export default function PatientPage({ params }: { params: Promise<{ id: string }
                         <input type="text" value={clinicalForm.source} onChange={e => setClinicalForm({...clinicalForm, source: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
                       </div>
                       <div className="sm:col-span-2">
-                        <div className="flex justify-between items-center mb-1">
-                          <label className="block text-xs font-medium text-slate-700">JSON Data</label>
-                          <button type="button" onClick={startListening} className={`flex items-center text-xs font-medium px-2 py-1 rounded transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-                            {isListening ? 'Listening...' : 'Dictate Notes'}
-                          </button>
-                        </div>
-                        {speechError && <div className="text-xs text-red-500 mb-1">Microphone error: {speechError}</div>}
-                        <textarea rows={3} value={clinicalForm.data} onChange={e => setClinicalForm({...clinicalForm, data: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                        {clinicalForm.record_type === "notes" ? (
+                          <>
+                            <div className="flex justify-between items-center mb-1">
+                              <label className="block text-xs font-medium text-slate-700">Notes Data (JSON or Text)</label>
+                              <button type="button" onClick={startListening} className={`flex items-center text-xs font-medium px-2 py-1 rounded transition-colors ${isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                {isListening ? 'Listening...' : 'Dictate Notes'}
+                              </button>
+                            </div>
+                            {speechError && <div className="text-xs text-red-500 mb-1">Microphone error: {speechError}</div>}
+                            <textarea rows={3} value={clinicalForm.data} onChange={e => setClinicalForm({...clinicalForm, data: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" placeholder="Type your notes here or use the microphone..." />
+                          </>
+                        ) : (
+                          <div>
+                            <label className="block text-xs font-medium text-slate-700 mb-2">Record Data Fields</label>
+                            {clinicalFields.map((field, index) => (
+                              <div key={index} className="flex gap-2 mb-2 items-center">
+                                <input 
+                                  type="text" 
+                                  placeholder="Key (e.g., blood_pressure)" 
+                                  value={field.key} 
+                                  onChange={e => {
+                                    const newFields = [...clinicalFields];
+                                    newFields[index].key = e.target.value;
+                                    setClinicalFields(newFields);
+                                  }} 
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                />
+                                <input 
+                                  type="text" 
+                                  placeholder="Value (e.g., 120/80)" 
+                                  value={field.value} 
+                                  onChange={e => {
+                                    const newFields = [...clinicalFields];
+                                    newFields[index].value = e.target.value;
+                                    setClinicalFields(newFields);
+                                  }} 
+                                  className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" 
+                                />
+                                <button type="button" onClick={() => {
+                                  const newFields = [...clinicalFields];
+                                  newFields.splice(index, 1);
+                                  setClinicalFields(newFields);
+                                }} className="p-2 text-slate-400 hover:text-red-500 transition-colors">
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                            <button type="button" onClick={() => setClinicalFields([...clinicalFields, { key: "", value: "" }])} className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                              </svg>
+                              Add Field
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <div className="sm:col-span-2 flex justify-end">
                         <button type="submit" disabled={isSubmittingClinical} className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 disabled:opacity-50 flex items-center">

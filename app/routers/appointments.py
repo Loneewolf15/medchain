@@ -34,21 +34,18 @@ def create_appointment(
     _get_patient_or_404(db, patient_id)
     # Enforce constraints based on role
     status_to_set = AppointmentStatus.REQUESTED
-    final_doctor_id = payload.doctor_id
+    final_doctor_id = payload.doctor_id if payload.doctor_id else None
     final_scheduled_at = payload.scheduled_at
+    status_to_set = AppointmentStatus.REQUESTED
 
     if current_user.role == Role.PATIENT:
-        # Patients always create REQUESTED appointments
         status_to_set = AppointmentStatus.REQUESTED
-
     elif current_user.role == Role.DOCTOR:
         final_doctor_id = current_user.id
         if not final_scheduled_at:
              raise HTTPException(status_code=400, detail="Doctors must specify a scheduled time")
         status_to_set = AppointmentStatus.SCHEDULED
-
     elif current_user.role in (Role.ADMIN, Role.SECRETARY):
-        # Admins and secretaries can schedule completely or leave requested
         if final_doctor_id and final_scheduled_at:
             status_to_set = AppointmentStatus.SCHEDULED
         else:
