@@ -74,4 +74,19 @@ def get_patient(
 @router.get("", response_model=list[PatientOut])
 def list_patients(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     _require_staff(current_user)
-    return db.query(Patient).all()
+    
+    if current_user.role in (Role.ADMIN, Role.NURSE, Role.SECRETARY, Role.LAB_SCIENTIST):
+        return db.query(Patient).all()
+        
+    # For doctors, only show assigned patients in the global list to prevent over-fetching
+    grants = db.query(AccessGrant.patient_id).filter(
+        AccessGrant.grantee_user_id == current_user.id,
+        AccessGrant.revoked_at.is_(None)
+    ).all()
+    patient_ids = [g[0] for g in grants]
+    
+    if not patient_ids:
+        return []
+        
+    return db.query(Patient).filter(Patient.id.in_(patient_ids)).all()
+

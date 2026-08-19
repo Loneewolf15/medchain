@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getMe, listUsers, register } from "@/lib/api";
+import { getMe, listUsers, register, getSystemSettings, updateSystemSettings } from "@/lib/api";
 import Spinner from "@/components/Spinner";
 
 export default function SettingsPage() {
   const [user, setUser] = useState<any>(null);
   const [allUsers, setAllUsers] = useState<any[]>([]);
+  const [ledgerMode, setLedgerMode] = useState<string>("hcs");
+  const [isUpdatingLedger, setIsUpdatingLedger] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -27,12 +29,29 @@ export default function SettingsPage() {
           return;
         }
         setUser(u);
+        
+        getSystemSettings().then(s => setLedgerMode(s.ledger_mode)).catch(console.error);
+        
         return listUsers();
       })
       .then(setAllUsers)
       .catch(() => router.push("/login"))
       .finally(() => setIsLoading(false));
   }, [router]);
+
+  const toggleLedgerMode = async (mode: string) => {
+    if (isUpdatingLedger) return;
+    setIsUpdatingLedger(true);
+    try {
+      const res = await updateSystemSettings({ mode });
+      setLedgerMode(res.mode);
+      alert(`Ledger mode updated to: ${res.mode}`);
+    } catch (err: any) {
+      alert("Failed to update ledger mode: " + err.message);
+    } finally {
+      setIsUpdatingLedger(false);
+    }
+  };
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,8 +81,54 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* Create Staff Form */}
-        <div className="lg:col-span-1 bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden p-6">
+        {/* Left Column Controls */}
+        <div className="lg:col-span-1 space-y-8">
+          
+          {/* Ledger Mode Switcher */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden p-6 relative">
+            {isUpdatingLedger && (
+              <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-10 flex items-center justify-center">
+                <Spinner className="w-8 h-8 text-blue-600" />
+              </div>
+            )}
+            <h2 className="text-lg font-bold text-slate-900 mb-2">Blockchain Backend</h2>
+            <p className="text-sm text-slate-500 mb-6">Switch between active ledger strategies.</p>
+            
+            <div className="space-y-3">
+              <button 
+                onClick={() => toggleLedgerMode('hcs')}
+                className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all ${ledgerMode === 'hcs' ? 'border-blue-600 bg-blue-50/50 shadow-sm' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`font-bold ${ledgerMode === 'hcs' ? 'text-blue-900' : 'text-slate-700'}`}>Hedera Consensus Service</div>
+                    <div className={`text-xs mt-1 ${ledgerMode === 'hcs' ? 'text-blue-700' : 'text-slate-500'}`}>High throughput audit trail</div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${ledgerMode === 'hcs' ? 'border-blue-600' : 'border-slate-300'}`}>
+                    {ledgerMode === 'hcs' && <div className="w-2.5 h-2.5 bg-blue-600 rounded-full" />}
+                  </div>
+                </div>
+              </button>
+              
+              <button 
+                onClick={() => toggleLedgerMode('smart_contract')}
+                className={`w-full text-left px-5 py-4 rounded-2xl border-2 transition-all ${ledgerMode === 'smart_contract' ? 'border-indigo-600 bg-indigo-50/50 shadow-sm' : 'border-slate-100 hover:border-slate-200 bg-white'}`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={`font-bold ${ledgerMode === 'smart_contract' ? 'text-indigo-900' : 'text-slate-700'}`}>Smart Contract</div>
+                    <div className={`text-xs mt-1 ${ledgerMode === 'smart_contract' ? 'text-indigo-700' : 'text-slate-500'}`}>EVM state execution</div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${ledgerMode === 'smart_contract' ? 'border-indigo-600' : 'border-slate-300'}`}>
+                    {ledgerMode === 'smart_contract' && <div className="w-2.5 h-2.5 bg-indigo-600 rounded-full" />}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Create Staff Form */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/60 overflow-hidden p-6">
           <h2 className="text-lg font-bold text-slate-900 mb-6">Create New Staff</h2>
           <form onSubmit={handleRegister} className="space-y-4">
             <div>
@@ -91,6 +156,7 @@ export default function SettingsPage() {
               {isSubmitting ? <><Spinner className="w-4 h-4 mr-2" /> Registering...</> : "Create User"}
             </button>
           </form>
+          </div>
         </div>
 
         {/* User List */}

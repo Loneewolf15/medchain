@@ -242,3 +242,21 @@ export async function getDashboardStats() {
   if (!res.ok) throw new Error("Failed to fetch dashboard stats");
   return res.json();
 }
+
+export async function getSystemSettings() {
+  const res = await fetch(`${API_URL}/system/settings`, {
+    headers: getHeaders(),
+  });
+  if (!res.ok) throw new Error("Failed to fetch system settings");
+  return res.json();
+}
+
+export async function updateSystemSettings(data: { mode: string }) {
+  const res = await fetch(`${API_URL}/system/settings/ledger`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error("Failed to update system settings");
+  return res.json();
+}

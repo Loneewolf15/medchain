@@ -26,7 +26,7 @@ def get_my_appointments(db: Session = Depends(get_db), current_user: User = Depe
 @router.get("/patients/assigned", response_model=list[PatientOut])
 def get_assigned_patients(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """Returns patients that the current user has explicit access to."""
-    if current_user.role == Role.ADMIN:
+    if current_user.role in (Role.ADMIN, Role.NURSE, Role.SECRETARY, Role.LAB_SCIENTIST):
         return db.query(Patient).all()
     
     # Get patient IDs from AccessGrants where revoked_at is None

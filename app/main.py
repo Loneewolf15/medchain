@@ -16,6 +16,7 @@ from app.routers import (
     ledger,
     patients,
     dashboard,
+    system,
 )
 logging.basicConfig(level=logging.INFO)
 settings = get_settings()
@@ -56,6 +57,7 @@ app.include_router(access.router)
 app.include_router(iot.router)
 app.include_router(ledger.router)
 app.include_router(dashboard.router)
+app.include_router(system.router)
 
 
 @app.get("/")
