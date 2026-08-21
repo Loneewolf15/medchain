@@ -10,14 +10,16 @@ export default function Navbar() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
 
+  useEffect(() => {
+    if (pathname !== "/login" && pathname !== "/register" && pathname !== "/") {
+      getMe().then(setUser).catch(() => setUser(null));
+    }
+  }, [pathname]);
+
   // Hide Navbar on auth pages
   if (pathname === "/login" || pathname === "/register" || pathname === "/") {
     return null;
   }
-
-  useEffect(() => {
-    getMe().then(setUser).catch(() => setUser(null));
-  }, [pathname]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
